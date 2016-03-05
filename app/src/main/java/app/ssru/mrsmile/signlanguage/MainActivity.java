@@ -36,6 +36,7 @@ public class MainActivity extends AppCompatActivity {
         list = new ArrayList<>();
         list.add("The Translation");
         list.add("Video Sign language");
+        list.add("Train Sign Language");
         list.add("How to use");
         list.add("Exit");
 
@@ -56,9 +57,12 @@ public class MainActivity extends AppCompatActivity {
                         intent = new Intent(getApplicationContext(), VideoSign.class);
                         break;
                     case 2 :
+                        intent = new Intent(getApplicationContext(), TrainSignLanguage.class);
+                        break;
+                    case 3 :
                         intent = new Intent(getApplicationContext(), HowTo.class);
                         break;
-                    case 3:
+                    case 4:
                         finish();
                         break;
                     default:
