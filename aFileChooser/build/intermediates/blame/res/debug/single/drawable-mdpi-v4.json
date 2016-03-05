@@ -1,0 +1,34 @@
+[
+    {
+        "merged": "C:\\Users\\Mr.Smile\\Desktop\\Android\\SignLanguage\\aFileChooser\\build\\intermediates\\res\\merged\\debug\\drawable-mdpi-v4\\ic_provider.png",
+        "source": "C:\\Users\\Mr.Smile\\Desktop\\Android\\SignLanguage\\aFileChooser\\src\\main\\res\\drawable-mdpi\\ic_provider.png"
+    },
+    {
+        "merged": "C:\\Users\\Mr.Smile\\Desktop\\SignLanguage\\aFileChooser\\build\\intermediates\\res\\merged\\debug\\drawable-mdpi-v4\\ic_folder.png",
+        "source": "C:\\Users\\Mr.Smile\\Desktop\\SignLanguage\\aFileChooser\\src\\main\\res\\drawable-mdpi\\ic_folder.png"
+    },
+    {
+        "merged": "C:\\Users\\Mr.Smile\\Desktop\\SignLanguage\\aFileChooser\\build\\intermediates\\res\\merged\\debug\\drawable-mdpi-v4\\ic_file.png",
+        "source": "C:\\Users\\Mr.Smile\\Desktop\\SignLanguage\\aFileChooser\\src\\main\\res\\drawable-mdpi\\ic_file.png"
+    },
+    {
+        "merged": "C:\\Users\\Mr.Smile\\Desktop\\SignLanguage\\aFileChooser\\build\\intermediates\\res\\merged\\debug\\drawable-mdpi-v4\\ic_chooser.png",
+        "source": "C:\\Users\\Mr.Smile\\Desktop\\SignLanguage\\aFileChooser\\src\\main\\res\\drawable-mdpi\\ic_chooser.png"
+    },
+    {
+        "merged": "C:\\Users\\Mr.Smile\\Desktop\\SignLanguage\\aFileChooser\\build\\intermediates\\res\\merged\\debug\\drawable-mdpi-v4\\ic_provider.png",
+        "source": "C:\\Users\\Mr.Smile\\Desktop\\SignLanguage\\aFileChooser\\src\\main\\res\\drawable-mdpi\\ic_provider.png"
+    },
+    {
+        "merged": "C:\\Users\\Mr.Smile\\Desktop\\Android\\SignLanguage\\aFileChooser\\build\\intermediates\\res\\merged\\debug\\drawable-mdpi-v4\\ic_file.png",
+        "source": "C:\\Users\\Mr.Smile\\Desktop\\Android\\SignLanguage\\aFileChooser\\src\\main\\res\\drawable-mdpi\\ic_file.png"
+    },
+    {
+        "merged": "C:\\Users\\Mr.Smile\\Desktop\\Android\\SignLanguage\\aFileChooser\\build\\intermediates\\res\\merged\\debug\\drawable-mdpi-v4\\ic_folder.png",
+        "source": "C:\\Users\\Mr.Smile\\Desktop\\Android\\SignLanguage\\aFileChooser\\src\\main\\res\\drawable-mdpi\\ic_folder.png"
+    },
+    {
+        "merged": "C:\\Users\\Mr.Smile\\Desktop\\Android\\SignLanguage\\aFileChooser\\build\\intermediates\\res\\merged\\debug\\drawable-mdpi-v4\\ic_chooser.png",
+        "source": "C:\\Users\\Mr.Smile\\Desktop\\Android\\SignLanguage\\aFileChooser\\src\\main\\res\\drawable-mdpi\\ic_chooser.png"
+    }
+]
