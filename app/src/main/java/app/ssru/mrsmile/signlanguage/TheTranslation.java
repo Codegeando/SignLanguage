@@ -1,66 +1,30 @@
 package app.ssru.mrsmile.signlanguage;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.Map;
 import java.lang.Math;
 
-import org.opencv.android.JavaCameraView;
-
 import org.opencv.android.BaseLoaderCallback;
-import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.CameraBridgeViewBase.CvCameraViewFrame;
 import org.opencv.android.CameraBridgeViewBase.CvCameraViewListener2;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.core.Core;
-import org.opencv.core.MatOfFloat;
-import org.opencv.core.MatOfInt;
 import org.opencv.core.MatOfPoint;
-import org.opencv.core.MatOfPoint2f;
 import org.opencv.core.Point;
 import org.opencv.core.Mat;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.core.Rect;
-
-import org.opencv.highgui.Highgui;
 import org.opencv.imgproc.Imgproc;
-import org.opencv.imgproc.Moments;
 
-import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.app.Activity;
-import android.app.AlertDialog;
-import android.content.ActivityNotFoundException;
-import android.content.ComponentName;
-import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
-import android.graphics.drawable.Drawable;
 import android.hardware.Camera;
-import android.hardware.Camera.AutoFocusCallback;
+import android.support.annotation.Nullable;
 import android.support.v4.view.MotionEventCompat;
 import android.util.Log;
 import android.view.Menu;
@@ -70,19 +34,13 @@ import android.view.SubMenu;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.View.OnTouchListener;
-import android.widget.AdapterView;
-import android.widget.Button;
-import android.widget.ListView;
 import android.widget.Toast;
-import android.widget.AdapterView.OnItemClickListener;
-
-import com.ipaulpro.afilechooser.utils.FileUtils;
 
 
 public class TheTranslation extends Activity implements CvCameraViewListener2{
 
     //Just for debugging
-    private static final String TAG = "HandGestureApp";
+    private static final String TAG = "Translation :::: ";
 
     //Color Space used for hand segmentation
     private static final int COLOR_SPACE = Imgproc.COLOR_RGB2Lab;
@@ -114,43 +72,20 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
     //Mode that is started when user clicks 'App Test' in the menu.
     public static final int APP_TEST_MODE = 6;
 
-    //Mode that is started when user clicks 'Data Collection' in the menu.
-    public static final int DATA_COLLECTION_MODE = 0;
-
-    //Mode that is started when user clicks 'Map Apps' in the menu.
-    public static final int MAP_APPS_MODE = 1;
-
     //Number of frames used for prediction
     private static final int FRAME_BUFFER_NUM = 1;
 
     //Frame interval between two launching events
     private static final int APP_TEST_DELAY_NUM = 10;
 
-    private boolean isPictureSaved = false;
     private int appTestFrameCount = 0;
 
-    private int testFrameCount = 0;
     private float[][] values = new float[FRAME_BUFFER_NUM][];
     private int[][] indices = new int[FRAME_BUFFER_NUM][];
 
-    // onActivityResult request
-    private static final int REQUEST_CODE = 6384;
-
-    private static final int REQUEST_SELECTED_APP = 1111;
-
-    private String diagResult = null;
     private Handler mHandler = new Handler();
-    private static final String DATASET_NAME = "/train_data.txt";
-
-    private String storeFolderName = null;
-    private File storeFolder = null;
-    private FileWriter fw = null;
-
-    //Stores the mapping results from gesture labels to app intents
-    private HashMap<Integer, Intent> table = new HashMap<Integer, Intent>();
 
 
-    private List<AppInfo> mlistAppInfo = null;
     private MyCameraView mOpenCvCameraView;
     private MenuItem[] mResolutionMenuItems;
     private SubMenu mResolutionMenu;
@@ -161,8 +96,6 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
     //Initial mode is BACKGROUND_MODE to presample the colors of the hand
     private int mode = BACKGROUND_MODE;
 
-    private int chooserMode = DATA_COLLECTION_MODE;
-
     private static final int SAMPLE_NUM = 7;
 
 
@@ -170,8 +103,7 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
     private double[][] avgColor = null;
     private double[][] avgBackColor = null;
 
-    private double[] channelsPixel = new double[4];
-    private ArrayList<ArrayList<Double>> averChans = new ArrayList<ArrayList<Double>>();
+    private ArrayList<ArrayList<Double>> averChans = new ArrayList<>();
 
     private double[][] cLower = new double[SAMPLE_NUM][3];
     private double[][] cUpper = new double[SAMPLE_NUM][3];
@@ -207,23 +139,17 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
     private Mat binDifMat = null;
 
 
-    private Scalar               mColorsRGB[] = null;
+    private Scalar mColorsRGB[] = null;
 
     //Stores all the information about the hand
     private HandGesture hg = null;
 
-    private int imgNum;
     private int gesFrameCount;
     private int curLabel = 0;
-    private int selectedLabel = -2;
-    private int curMaxLabel = 0;
-    private int selectedMappedLabel = -2;
 
     //Stores string representation of features to be written to train_data.txt
-    private ArrayList<String> feaStrs = new ArrayList<String>();
+    private ArrayList<String> feaStrs = new ArrayList<>();
 
-    File sdCardDir = Environment.getExternalStorageDirectory();
-    File sdFile = new File(sdCardDir, "AppMap.txt");
 
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
@@ -231,14 +157,6 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
             switch(status) {
                 case LoaderCallbackInterface.SUCCESS: {
                     Log.i("Android Tutorial", "OpenCV loaded successfully");
-
-                    //System.loadLibrary("HandGestureApp");
-
-                    try {
-                        //System.loadLibrary("signal");
-                    } catch (UnsatisfiedLinkError ule) {
-                        Log.e(TAG, "Hey, could not load native library signal");
-                    }
 
                     mOpenCvCameraView.enableView();
 
@@ -259,20 +177,9 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
                                         toastStr = "Sampling Finished!";
                                     } else if (mode == DETECTION_MODE) {
                                         mode = TRAIN_REC_MODE;
-
-                                        /*((Button)findViewById(R.id.AddBtn)).setVisibility(View.VISIBLE);
-                                        ((Button)findViewById(R.id.TrainBtn)).setVisibility(View.VISIBLE);
-                                        ((Button)findViewById(R.id.TestBtn)).setVisibility(View.VISIBLE);*/
                                         toastStr = "Binary Display Finished!";
-
-                                        preTrain();
-
                                     } else if (mode == TRAIN_REC_MODE){
                                         mode = DETECTION_MODE;
-                                        /*((Button)findViewById(R.id.AddBtn)).setVisibility(View.INVISIBLE);
-                                        ((Button)findViewById(R.id.TrainBtn)).setVisibility(View.INVISIBLE);
-                                        ((Button)findViewById(R.id.TestBtn)).setVisibility(View.INVISIBLE);*/
-
                                         toastStr = "train finished!";
                                     } else if (mode == BACKGROUND_MODE) {
                                         toastStr = "First background sampled!";
@@ -308,85 +215,10 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
         }
     };
 
-    // svm native
-    /*private native int trainClassifierNative(String trainingFile, int kernelType,
-                                             int cost, float gamma, int isProb, String modelFile);
-    private native int doClassificationNative(float values[][], int indices[][],
-                                              int isProb, String modelFile, int labels[], double probs[]);*/
-
-    //SVM training which outputs a file named as "model" in MyDataSet
-    private void train() {
-        // Svm training
-        int kernelType = 2; // Radial basis function
-        int cost = 4; // Cost
-        int isProb = 0;
-        float gamma = 0.001f; // Gamma
-        String trainingFileLoc = storeFolderName+DATASET_NAME;
-        String modelFileLoc = storeFolderName+"/model";
-        Log.i("Store Path", modelFileLoc);
-
-        /*if (trainClassifierNative(trainingFileLoc, kernelType, cost, gamma, isProb,
-                modelFileLoc) == -1) {
-            Log.d(TAG, "training err");
-            finish();
-        }*/
-        Toast.makeText(this, "Training is done", Toast.LENGTH_SHORT).show();
-    }
-
-    public void initLabel() {
-        try {
-            File file[] = storeFolder.listFiles();
-
-            int maxLabel = 0;
-            for (int i=0; i < file.length; i++) {
-
-                String fullName = file[i].getName();
-
-                final int dotId = fullName.lastIndexOf('.');
-                if (dotId > 0) {
-                    String name = fullName.substring(0, dotId);
-                    String extName = fullName.substring(dotId+1);
-                    if (extName.equals("jpg")) {
-                        int curName = Integer.valueOf(name);
-                        if (curName > maxLabel)
-                            maxLabel = curName;
-                    }
-                }
-            }
-            curLabel = maxLabel;
-            curMaxLabel = curLabel;
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_the_translation);
-
-        try{
-            FileInputStream fis = new FileInputStream(sdFile);
-            ObjectInputStream ois = new ObjectInputStream(fis);
-            while(true) {
-                try{
-
-                    int key = ois.readInt();
-                    String value =(String) ois.readObject();
-
-                    Intent intent = Intent.parseUri(value, 0);
-                    table.put(key, intent);
-                }
-                catch(IOException e) {
-                    break;
-                }
-            }
-            ois.close();
-            Log.e("ReadFile","read succeeded......");
-        }catch(Exception ex){
-            Log.e("ReadFile","read ended......");
-
-        }
 
         mOpenCvCameraView = (MyCameraView) findViewById(R.id.HandGestureApp);
         mOpenCvCameraView.setVisibility(SurfaceView.VISIBLE);
@@ -404,33 +236,11 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
         for (int i = 0; i < 3; i++)
             averChans.add(new ArrayList<Double>());
 
-        //HLS
-        //initCLowerUpper(7, 7, 80, 80, 80, 80);
-
-        //RGB
-        //initCLowerUpper(30, 30, 30, 30, 30, 30);
-
-        //HSV
-        //initCLowerUpper(15, 15, 50, 50, 50, 50);
-        //initCBackLowerUpper(5, 5, 80, 80, 100, 100);
-
-        //Ycrcb
-        //	initCLowerUpper(40, 40, 10, 10, 10, 10);
-
         //Lab
         initCLowerUpper(50, 50, 10, 10, 10, 10);
         initCBackLowerUpper(50, 50, 3, 3, 3, 3);
 
-        SharedPreferences numbers = getSharedPreferences("Numbers", 0);
-        imgNum = numbers.getInt("imgNum", 0);
-
-        initOpenCV();
-
         Log.i(TAG, "Created!");
-    }
-
-    public void initOpenCV() {
-
     }
 
     //Things triggered by clicking any items in the menu start here
@@ -440,14 +250,11 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
 
         switch (item.getItemId()) {
             case R.id.action_save:
-                isPictureSaved = true;
-                //  savePicture();
+                //isPictureSaved = true;
                 return true;
             case R.id.data_collection:
-                callDataCollection();
                 return true;
             case R.id.map_apps:
-                callMapApps();
                 return true;
             case R.id.app_test:
                 if (mode == APP_TEST_MODE) {
@@ -459,8 +266,6 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
                     appTestFrameCount = 0;
                 }
                 return true;
-            //  default:
-            //    return super.onOptionsItemSelected(item);
         }
 
         int groupId = item.getGroupId();
@@ -474,495 +279,34 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
             Toast.makeText(this, caption, Toast.LENGTH_SHORT).show();
             return true;
         }
+
         return super.onOptionsItemSelected(item);
-    }
 
-    /*public void restoreUI() {
-
-        setContentView(R.layout.activity_main);
-
-        mOpenCvCameraView = (MyCameraView) findViewById(R.id.HandGestureApp);
-        mOpenCvCameraView.enableView();
-
-        mOpenCvCameraView.setOnTouchListener(new OnTouchListener() {
-            public boolean onTouch(View v, MotionEvent event) {
-                // ... Respond to touch events
-                int action = MotionEventCompat.getActionMasked(event);
-
-                switch(action) {
-                    case (MotionEvent.ACTION_DOWN) :
-                        Log.d(TAG,"Action was DOWN");
-                        String toastStr = null;
-                        if (mode == SAMPLE_MODE) {
-                            mode = DETECTION_MODE;
-                            toastStr = "Sampling Finished!";
-                        } else if (mode == DETECTION_MODE) {
-                            mode = TRAIN_REC_MODE;
-                            /*((Button)findViewById(R.id.AddBtn)).setVisibility(View.VISIBLE);
-                            ((Button)findViewById(R.id.TrainBtn)).setVisibility(View.VISIBLE);
-                            ((Button)findViewById(R.id.TestBtn)).setVisibility(View.VISIBLE);
-                            toastStr = "Binary Display Finished!";
-
-                            preTrain();
-
-                        } else if (mode == TRAIN_REC_MODE){
-                            mode = DETECTION_MODE;
-                            /*((Button)findViewById(R.id.AddBtn)).setVisibility(View.INVISIBLE);
-                            ((Button)findViewById(R.id.TrainBtn)).setVisibility(View.INVISIBLE);
-                            ((Button)findViewById(R.id.TestBtn)).setVisibility(View.INVISIBLE);
-
-                            toastStr = "train finished!";
-                        } else if (mode == BACKGROUND_MODE) {
-                            toastStr = "First background sampled!";
-                            rgbaMat.copyTo(backMat);
-                            mode = SAMPLE_MODE;
-                        }
-
-                        Toast.makeText(getApplicationContext(), toastStr, Toast.LENGTH_LONG).show();
-                        return false;
-                    case (MotionEvent.ACTION_MOVE) :
-                        Log.d(TAG,"Action was MOVE");
-                        return true;
-                    case (MotionEvent.ACTION_UP) :
-                        Log.d(TAG,"Action was UP");
-                        return true;
-                    case (MotionEvent.ACTION_CANCEL) :
-                        Log.d(TAG,"Action was CANCEL");
-                        return true;
-                    case (MotionEvent.ACTION_OUTSIDE) :
-                        Log.d(TAG,"Movement occurred outside bounds " +
-                                "of current screen element");
-                        return true;
-                    default :
-                        return true;
-                }
-            }
-        });
-        mOpenCvCameraView.setVisibility(SurfaceView.VISIBLE);
-        mOpenCvCameraView.setCvCameraViewListener(this);
-
-        ((Button)findViewById(R.id.AddBtn)).setVisibility(View.VISIBLE);
-        ((Button)findViewById(R.id.TrainBtn)).setVisibility(View.VISIBLE);
-        ((Button)findViewById(R.id.TestBtn)).setVisibility(View.VISIBLE);
-    }
-
-    public void showDialogBeforeAdd(String title,String message){
-        Log.i("Show Dialog", "Entered");
-        AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(
-                this);
-        // set title
-        alertDialogBuilder.setTitle(title);
-        // set dialog message
-        alertDialogBuilder
-                .setMessage(message)
-                .setCancelable(false)
-                .setPositiveButton("Yes",new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog,int id) {
-                        doAddNewGesture();
-                        synchronized(sync) {
-                            sync.notify();
-                        }
-                        dialog.cancel();
-                    }
-                })
-                .setNegativeButton("No",new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog,int id) {
-                        // if this button is clicked, just close
-                        // the dialog box and do nothing
-                        synchronized(sync) {
-                            sync.notify();
-                        }
-                        dialog.cancel();
-                    }
-                });
-        // create alert dialog
-        AlertDialog alertDialog = alertDialogBuilder.create();
-        // show it
-        alertDialog.show();
-    }
-
-    public void showDialog(final Context v, String title,String message,
-                           String posStr, String negStr, String neuStr){
-        diagResult = null;
-        AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(
-                v);
-        // set title
-        alertDialogBuilder.setTitle(title);
-        // set dialog message
-        alertDialogBuilder
-                .setMessage(message)
-                .setCancelable(false)
-                .setPositiveButton(posStr,new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog,int id) {
-                        diagResult = "Positive";
-                        Toast.makeText(getApplicationContext(), "Add more to Gesture "
-                                + selectedLabel, Toast.LENGTH_SHORT).show();
-                        curLabel = selectedLabel - 1;
-                        dialog.cancel();
-                    }
-                })
-                .setNegativeButton(negStr,new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog,int id) {
-                        // if this button is clicked, just close
-                        // the dialog box and do nothing
-                        diagResult = "Negative";
-                        doDeleteGesture(selectedLabel);
-                        Toast.makeText(getApplicationContext(), "Gesture "
-                                + selectedLabel + " is deleted", Toast.LENGTH_SHORT).show();
-                        curLabel = selectedLabel - 1;
-                        dialog.cancel();
-                    }
-                });
-
-        if (neuStr != null) {
-            alertDialogBuilder.setNeutralButton(neuStr, new DialogInterface.OnClickListener() {
-                public void onClick(DialogInterface dialog,int id) {
-                    diagResult = "Neutral";
-                    Toast.makeText(getApplicationContext(), "Canceled"
-                            , Toast.LENGTH_SHORT).show();
-                    selectedLabel = -2;
-                    dialog.cancel();
-                }
-            })  ;
-        }
-        // create alert dialog
-        AlertDialog alertDialog = alertDialogBuilder.create();
-        // show it
-        alertDialog.show();
-    }*/
-
-    /* Checks if external storage is available for read and write */
-    public boolean isExternalStorageWritable() {
-        String state = Environment.getExternalStorageState();
-        if (Environment.MEDIA_MOUNTED.equals(state)) {
-            return true;
-        }
-        return false;
-    }
-
-    //Called when user clicks "Data Collection" in the menu
-    //Starts a file chooser which lets the user chooses whatever gesture data he want to add
-    //Or add a new one
-    public void callDataCollection() {
-        if (mode != TRAIN_REC_MODE) {
-            Toast.makeText(getApplicationContext(), "Please do it in training mode!", Toast.LENGTH_SHORT).show();
-        } else {
-            String dataPath;
-            if (storeFolder != null) {
-                dataPath = storeFolderName;
-            } else {
-                dataPath = Environment.getExternalStorageDirectory().toString();
-            }
-            selectedLabel = -2;
-            chooserMode = DATA_COLLECTION_MODE;
-            showChooser();
-        }
-    }
-
-    //Called when user clicks "Map Apps" in the menu
-    //Starts a file chooser that let user choose the gesture and app he want to match
-    public void callMapApps() {
-        if (mode != TRAIN_REC_MODE) {
-            Toast.makeText(getApplicationContext(), "Please do it in training mode!", Toast.LENGTH_SHORT).show();
-        } else {
-            String dataPath;
-            if (storeFolder != null) {
-                dataPath = storeFolderName;
-            } else {
-                dataPath = Environment.getExternalStorageDirectory().toString();
-            }
-            selectedMappedLabel = -2;
-            chooserMode = MAP_APPS_MODE;
-            showChooser();
-        }
-    }
-
-    private void showChooser() {
-        // Use the GET_CONTENT intent from the utility class
-        Intent target = FileUtils.createGetContentIntent();
-        // Create the chooser Intent
-        Intent intent = Intent.createChooser(
-                target, getString(R.string.chooser_title));
-        try {
-            startActivityForResult(intent, REQUEST_CODE);
-        } catch (ActivityNotFoundException e) {
-            // The reason for the existence of aFileChooser
-        }
-    }
-
-    //This function deals with the results returned by file chooser triggered
-    //by clicking "Data Collection" and "Map Apps" in the menu
-    //RequestCode indicates which activity the request correspond to
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        switch (requestCode) {
-            case REQUEST_CODE: // Responding to the activity started by "Data Collection"
-                // and "Map Apps"
-
-                if (resultCode == RESULT_OK) {
-                    if (data != null) {
-                        // Get the URI of the selected file
-                        final Uri uri = data.getData();
-                        Log.i(TAG, "Uri = " + uri.toString());
-                        try {
-                            // Get the file path from the URI
-                            final String path = FileUtils.getPath(this, uri);
-
-                            int slashId = path.lastIndexOf('/');
-                            int slashDot = path.lastIndexOf('.');
-                            String selectedLabelStr = path.substring(slashId+1, slashDot);
-
-                            if (chooserMode == DATA_COLLECTION_MODE) {
-                                selectedLabel = Integer.valueOf(selectedLabelStr);
-                                if (selectedLabel != -2) {
-                                    /*showDialog(this, "Add or Delete", "Selected Label is " +
-                                                    selectedLabel + ",\nAdd to this gesture or delete it?",
-                                            "Add", "Delete", "Cancel");*/
-                                }
-                            } else if (chooserMode == MAP_APPS_MODE) {
-                                //The label of choosen gesture to be matched
-                                selectedMappedLabel = Integer.valueOf(selectedLabelStr);
-                                if (selectedMappedLabel != -2) {
-                                    callAppList();
-                                }
-                            }
-                        } catch (Exception e) {
-                            Log.e("SelectorTestActivity", "File select error", e);
-                        }
-                    }
-                }
-                break;
-            case REQUEST_SELECTED_APP: //Responding to the activity started in callAppList()
-                if (resultCode == RESULT_OK) {
-                    if (selectedMappedLabel != -2) {
-                        //Postion of selected app in the app list
-                        int position = data.getIntExtra("Position", -1);
-
-                        if (position != -1) {
-
-                            table.put(selectedMappedLabel, mlistAppInfo.get(position).getIntent());
-                            Log.i(TAG, "selected Label = " + selectedMappedLabel +
-                                    "Position = " + position);
-                        }
-                        else { }
-                    }
-                }
-                break;
-        }
-        super.onActivityResult(requestCode, resultCode, data);
-    }
-
-    //Start a new activity containing a list of callable apps
-    public void callAppList() {
-        Log.i(TAG, "Call App List!");
-        mlistAppInfo = new ArrayList<>();
-        queryAppInfo();
-        BrowseApplicationInfoAdapter browseAppAdapter = new BrowseApplicationInfoAdapter(
-                this, mlistAppInfo);
-
-        Intent intent = new Intent(this, DisplayAppList.class);
-
-        startActivityForResult(intent, REQUEST_SELECTED_APP);
-    }
-
-    public void queryAppInfo() {
-        PackageManager pm = this.getPackageManager(); // ���PackageManager����
-        Intent mainIntent = new Intent(Intent.ACTION_MAIN, null);
-        mainIntent.addCategory(Intent.CATEGORY_LAUNCHER);
-
-        List<ResolveInfo> resolveInfos = pm
-                .queryIntentActivities(mainIntent, PackageManager.MATCH_DEFAULT_ONLY);
-
-        Collections.sort(resolveInfos,new ResolveInfo.DisplayNameComparator(pm));
-        if (mlistAppInfo != null) {
-            mlistAppInfo.clear();
-            for (ResolveInfo reInfo : resolveInfos) {
-                String activityName = reInfo.activityInfo.name;
-                String pkgName = reInfo.activityInfo.packageName;
-                String appLabel = (String) reInfo.loadLabel(pm);
-                Drawable icon = reInfo.loadIcon(pm);
-
-                Intent launchIntent = new Intent();
-                launchIntent.setComponent(new ComponentName(pkgName,
-                        activityName));
-
-                AppInfo appInfo = new AppInfo();
-                appInfo.setAppLabel(appLabel);
-                appInfo.setPkgName(pkgName);
-                appInfo.setAppIcon(icon);
-                appInfo.setIntent(launchIntent);
-                mlistAppInfo.add(appInfo);
-            }
-        }
-    }
-
-    //Called when user clicks "Add Gesture" button
-    //Prepare train_data.txt file and set the mode to be ADD_MODE
-    /*public void addNewGesture(View view) {
-
-        if (mode == TRAIN_REC_MODE) {
-            if (storeFolder != null) {
-                File myFile = new File(storeFolderName + DATASET_NAME);
-                if (myFile.exists()) {
-                } else {
-                    try {
-                        myFile.createNewFile();
-                    } catch (Exception e) {
-                        Toast.makeText(getApplicationContext(), "Failed to create dataset at "
-                                + myFile, Toast.LENGTH_SHORT).show();
-                    }
-                }
-                try {
-                    fw = new FileWriter(myFile, true);
-                    feaStrs.clear();
-                    if (selectedLabel == -2)
-                        curLabel = curMaxLabel + 1;
-                    else {
-                        curLabel++;
-                        selectedLabel = -2;
-                    }
-                    gesFrameCount = 0;
-                    mode = ADD_MODE;
-                } catch (FileNotFoundException e) {
-                    e.printStackTrace();
-                    Log.i(TAG, "******* File not found. Did you" +
-                            " add a WRITE_EXTERNAL_STORAGE permission to the   manifest?");
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        } else {
-            Toast.makeText(getApplicationContext(), "Please do it in TRAIN_REC mode"
-                    , Toast.LENGTH_SHORT).show();
-        }
-    }*/
-
-    //Write the strings of features to the file train_data.txt
-    //Save the screenshot of the gesture
-    /*public void doAddNewGesture() {
-        try {
-            for (int i = 0; i < feaStrs.size(); i++) {
-                fw.write(feaStrs.get(i));
-            }
-            fw.close();
-        } catch (Exception e) {
-        }
-        savePicture();
-
-        if (curLabel > curMaxLabel) {
-            curMaxLabel = curLabel;
-        }
-    }*/
-
-    /*public void doDeleteGesture(int label) {
-    }*/
-
-    //All the trained gestures jpg files and SVM training model, train_data.txt
-    //are stored in ExternalStorageDirectory/MyDataSet
-    //If MyDataSet doesn't exist, then it will be created in this function
-    public void preTrain() {
-        if (!isExternalStorageWritable()) {
-            Toast.makeText(getApplicationContext(), "External storage is not writable!", Toast.LENGTH_SHORT).show();
-        } else if (storeFolder == null) {
-            storeFolderName = Environment.getExternalStorageDirectory() + "/MyDataSet";
-            storeFolder = new File(storeFolderName);
-            boolean success = true;
-            if (!storeFolder.exists()) {
-                success = storeFolder.mkdir();
-            }
-            if (success) {
-                // Do something on success
-            } else {
-                Toast.makeText(getApplicationContext(), "Failed to create directory "+ storeFolderName, Toast.LENGTH_SHORT).show();
-                storeFolder = null;
-                storeFolderName = null;
-            }
-        }
-
-        if (storeFolder != null) {
-            try {
-                initLabel();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-
-        }
-    }
-
-    //Called when user clicks "Train" button
-    public void train(View view) {
-        train();
-    }
-
-    //Called when user clicks "Test" button
-    public void test(View view) {
-        if (mode == TRAIN_REC_MODE)
-            mode = TEST_MODE;
-        else if (mode == TEST_MODE) {
-            mode = TRAIN_REC_MODE;
-        }
-    }
-
-    boolean savePicture() {
-        Mat img;
-
-        if (((mode == BACKGROUND_MODE) || (mode == SAMPLE_MODE)
-                || (mode == TRAIN_REC_MODE)) || (mode == ADD_MODE) ||
-                (mode == TEST_MODE)) {
-            Imgproc.cvtColor(rgbaMat, bgrMat, Imgproc.COLOR_RGBA2BGR, 3);
-            img = bgrMat;
-        } else if (mode == DETECTION_MODE) {
-            img = binMat;
-        } else {img = null;}
-
-        if (img != null) {
-            if (!isExternalStorageWritable()) {
-                //		 Toast.makeText(getApplicationContext(), "External storage is not writable!", Toast.LENGTH_SHORT).show();
-                return false;
-            }
-            File path;
-            String filename;
-            if (mode != ADD_MODE) {
-                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
-                filename = "image_" + imgNum + ".jpg";
-            } else {
-                path = storeFolder;
-                filename = curLabel + ".jpg";
-            }
-            imgNum++;
-            File file = new File(path, filename);
-            Boolean bool = false;
-            filename = file.toString();
-            bool = Highgui.imwrite(filename, img);
-
-            if (bool == true) {
-                //  Toast.makeText(getApplicationContext(), "Saved as " + filename, Toast.LENGTH_SHORT).show();
-                Log.d(TAG, "Succeed writing image to" + filename);
-            } else {Log.d(TAG, "Fail writing image to external storage");}
-            return bool;
-        }
-        return false;
     }
 
     //Just initialize boundaries of the first sample
-    void initCLowerUpper(double cl1, double cu1, double cl2, double cu2, double cl3,
-                         double cu3){
+    private void initCLowerUpper( double cl1, double cu1, double cl2,
+                                  double cu2, double cl3, double cu3 ) {
+
         cLower[0][0] = cl1;
         cUpper[0][0] = cu1;
         cLower[0][1] = cl2;
         cUpper[0][1] = cu2;
         cLower[0][2] = cl3;
         cUpper[0][2] = cu3;
+
     }
 
-    void initCBackLowerUpper(double cl1, double cu1, double cl2, double cu2, double cl3,
-                             double cu3){
+    private void initCBackLowerUpper( double cl1, double cu1, double cl2,
+                                      double cu2, double cl3, double cu3 ) {
+
         cBackLower[0][0] = cl1;
         cBackUpper[0][0] = cu1;
         cBackLower[0][1] = cl2;
         cBackUpper[0][1] = cu2;
         cBackLower[0][2] = cl3;
         cBackUpper[0][2] = cu3;
+
     }
 
     //Initialize menu and resolution list.
@@ -987,39 +331,40 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
         return true;
     }
 
-    AutoFocusCallback myAutoFocusCallback = new AutoFocusCallback(){
-        @Override
-        public void onAutoFocus(boolean arg0, Camera arg1) {
-            // TODO Auto-generated method stub
-            int maxFocusAreas = mOpenCvCameraView.getMaxNumFocusAreas();
-            Log.i("MaxFocusAreas", "" + maxFocusAreas);
-        }
-    };
-
-    public void checkCameraParameters() {
+    private void checkCameraParameters() {
         if (mOpenCvCameraView.isAutoWhiteBalanceLockSupported()) {
+
             if (mOpenCvCameraView.getAutoWhiteBalanceLock()) {
+
                 Log.d("AutoWhiteBalanceLock", "Locked");
+
             } else {
+
                 Log.d("AutoWhiteBalanceLock", "Not Locked");
                 mOpenCvCameraView.setAutoWhiteBalanceLock(true);
 
                 if (mOpenCvCameraView.getAutoWhiteBalanceLock()) {
                     Log.d("AutoWhiteBalanceLock", "Locked");
                 }
+
             }
-        } else {Log.d("AutoWhiteBalanceLock", "Not Supported");}
+
+        } else {
+            Log.d("AutoWhiteBalanceLock", "Not Supported");
+        }
     }
 
-    public void releaseCVMats() {
-        releaseCVMat(sampleColorMat);
+    private void releaseCVMats() {
+
+        releaseCVMat( sampleColorMat );
         sampleColorMat = null;
 
-        if (sampleColorMats!=null) {
+        if ( sampleColorMats != null ) {
             for (int i = 0; i < sampleColorMats.size(); i++) {
                 releaseCVMat(sampleColorMats.get(i));
             }
         }
+
         sampleColorMats = null;
 
         if (sampleMats != null) {
@@ -1027,6 +372,7 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
                 releaseCVMat(sampleMats[i]);
             }
         }
+
         sampleMats = null;
 
         releaseCVMat(rgbMat);
@@ -1063,48 +409,100 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
         binDifMat = null;
     }
 
-    public void releaseCVMat(Mat img) {
-        if (img != null) {img.release();}
+    private void releaseCVMat( Mat img ) {
+        if (img != null) {
+            img.release();
+        }
     }
 
     @Override
     public void onCameraViewStarted(int width, int height) {
         // TODO Auto-generated method stub
-        Log.i(TAG, "On cameraview started!");
+        Log.i(TAG, "On camera view started!");
 
-        if (sampleColorMat == null) {sampleColorMat = new Mat();}
-        if (sampleColorMats == null) {sampleColorMats = new ArrayList<Mat>();}
+        if (isNullValue(sampleColorMat)) {
+            sampleColorMat = new Mat();
+        }
 
-        if (sampleMats == null) {
+        if (isNullValue(sampleColorMats)) {
+            sampleColorMats = new ArrayList<>();
+        }
+
+        if (isNullValue(sampleMats)) {
             sampleMats = new Mat[SAMPLE_NUM];
             for (int i = 0; i < SAMPLE_NUM; i++) {
                 sampleMats[i] = new Mat();
             }
         }
 
-        if (rgbMat == null) {rgbMat = new Mat();}
-        if (bgrMat == null) {bgrMat = new Mat();}
-        if (interMat == null) {interMat = new Mat();}
-        if (binMat == null) {binMat = new Mat();}
-        if (binTmpMat == null){binTmpMat = new Mat();}
-        if (binTmpMat2 == null) {binTmpMat2 = new Mat();}
-        if (binTmpMat0 == null) {binTmpMat0 = new Mat();}
-        if (binTmpMat3 == null) {binTmpMat3 = new Mat();}
-        if (tmpMat == null) {tmpMat = new Mat();}
-        if (backMat==null) {backMat = new Mat();}
-        if (difMat == null) {difMat = new Mat();}
-        if (binDifMat == null) {binDifMat = new Mat();}
-        if (hg == null) {hg = new HandGesture();}
+        if (isNullValue(rgbMat)) {
+            rgbMat = new Mat();
+        }
 
-        mColorsRGB = new Scalar[] { new Scalar(255, 0, 0, 255), new Scalar(0, 255, 0, 255), new Scalar(0, 0, 255, 255) };
+        if (isNullValue(bgrMat)) {
+            bgrMat = new Mat();
+        }
 
+        if (isNullValue(interMat)) {
+            interMat = new Mat();
+        }
+
+        if (isNullValue(binMat)) {
+            binMat = new Mat();
+        }
+
+        if (isNullValue(binTmpMat)) {
+            binTmpMat = new Mat();
+        }
+
+        if (isNullValue(binTmpMat2)) {
+            binTmpMat2 = new Mat();
+        }
+
+        if (isNullValue(binTmpMat0)) {
+            binTmpMat0 = new Mat();
+        }
+
+        if (isNullValue(binTmpMat3)) {
+            binTmpMat3 = new Mat();
+        }
+
+        if (isNullValue(tmpMat)) {
+            tmpMat = new Mat();
+        }
+
+        if (isNullValue(backMat)) {
+            backMat = new Mat();
+        }
+
+        if (isNullValue(difMat)) {
+            difMat = new Mat();
+        }
+
+        if (isNullValue(binDifMat)) {
+            binDifMat = new Mat();
+        }
+
+        if (isNullValue(hg)) {
+            hg = new HandGesture();
+        }
+
+        mColorsRGB = new Scalar[] {
+                        new Scalar(255, 0, 0, 255),
+                            new Scalar(0, 255, 0, 255),
+                                new Scalar(0, 0, 255, 255)
+        };
+
+    }
+
+    private boolean isNullValue(Object object) {
+        return object == null;
     }
 
     @Override
     public void onCameraViewStopped() {
-        // TODO Auto-generated method stub
-        Log.i(TAG, "On cameraview stopped!");
-        //	releaseCVMats();
+        Log.i(TAG, "On camera view stopped!");
+        releaseCVMats();
     }
 
     //Called when each frame data gets received
@@ -1113,8 +511,6 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
     @Override
     public Mat onCameraFrame(CvCameraViewFrame inputFrame) {
         rgbaMat = inputFrame.rgba();
-
-        //Core.flip(rgbaMat, rgbaMat, 1);
 
         Imgproc.GaussianBlur(rgbaMat, rgbaMat, new Size(5,5), 5, 5);
 
@@ -1129,8 +525,10 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
             //segmented hand represented by white color
             produceBinImg(interMat, binMat);
             return binMat;
-        } else if ((mode == TRAIN_REC_MODE)||(mode == ADD_MODE)
-                || (mode == TEST_MODE) || (mode == APP_TEST_MODE)){
+        } else if ((mode == TRAIN_REC_MODE)
+                    ||(mode == ADD_MODE)
+                        || (mode == TEST_MODE)
+                            || (mode == APP_TEST_MODE)){
 
             produceBinImg(interMat, binMat);
 
@@ -1183,9 +581,6 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
                     indices[0][i] = i+1;
                 }
 
-                int isProb = 0;
-
-                String modelFile = storeFolderName + "/model";
                 int[] returnedLabel = {0};
                 double[] returnedProb = {0.0};
 
@@ -1205,8 +600,10 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
                             if (appTestFrameCount == APP_TEST_DELAY_NUM) {
                                 //Call other apps according to the predicted label
                                 //This is done every APP_TEST_DELAY_NUM frames
-                                callAppByLabel(returnedLabel[0]);
-                            } else {appTestFrameCount++;}
+                                //callAppByLabel(returnedLabel[0]);
+                            } else {
+                                appTestFrameCount++;
+                            }
                         }
                     }
                 }
@@ -1214,25 +611,12 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
         } else if (mode == BACKGROUND_MODE) { //First mode which presamples background colors
             preSampleBack(rgbaMat);
         }
-        if (isPictureSaved) {
-            savePicture();
-            isPictureSaved = false;
-        }
         return rgbaMat;
-    }
-
-    void callAppByLabel(int label) {
-        Intent intent = table.get(label);
-
-        if (intent != null) {
-            appTestFrameCount = 0;
-            startActivity(intent);
-        }
     }
 
     //Presampling hand colors.
     //Output is avgColor, which is essentially a 7 by 3 matrix storing the colors sampled by seven squares
-    void preSampleHand(Mat img) {
+    private void preSampleHand(Mat img) {
         int cols = img.cols();
         int rows = img.rows();
         squareLen = rows/20;
@@ -1269,7 +653,7 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
 
     //Presampling background colors.
     //Output is avgBackColor, which is essentially a 7 by 3 matrix storing the colors sampled by seven squares
-    void preSampleBack(Mat img) {
+    private void preSampleBack(Mat img) {
         int cols = img.cols();
         int rows = img.rows();
         squareLen = rows/20;
@@ -1305,11 +689,10 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
 
     }
 
-    void boundariesCorrection() {
-        for (int i = 1; i < SAMPLE_NUM; i++)
-        {
-            for (int j = 0; j < 3; j++)
-            {
+    private void boundariesCorrection() {
+
+        for (int i = 1; i < SAMPLE_NUM; i++) {
+            for (int j = 0; j < 3; j++) {
                 cLower[i][j] = cLower[0][j];
                 cUpper[i][j] = cUpper[0][j];
 
@@ -1318,110 +701,26 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
             }
         }
 
-        for (int i = 0; i < SAMPLE_NUM; i++)
-        {
-            for (int j = 0; j < 3; j++)
-            {
-                if (avgColor[i][j] - cLower[i][j] < 0)
+        for (int i = 0; i < SAMPLE_NUM; i++) {
+            for (int j = 0; j < 3; j++) {
+
+                if (avgColor[i][j] - cLower[i][j] < 0) {
                     cLower[i][j] = avgColor[i][j];
+                }
 
-                if (avgColor[i][j] + cUpper[i][j] > 255)
+                if (avgColor[i][j] + cUpper[i][j] > 255) {
                     cUpper[i][j] = 255 - avgColor[i][j];
-
-                if (avgBackColor[i][j] - cBackLower[i][j] < 0)
+                }
+                if (avgBackColor[i][j] - cBackLower[i][j] < 0){
                     cBackLower[i][j] = avgBackColor[i][j];
+                }
 
-                if (avgBackColor[i][j] + cBackUpper[i][j] > 255)
+                if (avgBackColor[i][j] + cBackUpper[i][j] > 255){
                     cBackUpper[i][j] = 255 - avgBackColor[i][j];
+                }
             }
         }
     }
-
-    /*void cropBinImg(Mat imgIn, Mat imgOut) {
-        imgIn.copyTo(binTmpMat3);
-
-        Rect boxRect = makeBoundingBox(binTmpMat3);
-        Rect finalRect = null;
-
-        if (boxRect!=null) {
-            Mat roi = new Mat(imgIn, boxRect);
-            int armMargin = 2;
-
-            Point tl = boxRect.tl();
-            Point br = boxRect.br();
-
-            int colNum = imgIn.cols();
-            int rowNum = imgIn.rows();
-
-            int wristThresh = 10;
-
-            List<Integer> countOnes = new ArrayList<Integer>();
-
-            if (tl.x < armMargin) {
-                double rowLimit = br.y;
-                int localMinId = 0;
-                for (int x = (int)tl.x; x < br.x; x++) {
-                    int curOnes = Core.countNonZero(roi.col(x));
-                    int lstTail = countOnes.size()-1;
-                    if (lstTail >= 0) {
-                        if (curOnes < countOnes.get(lstTail)) {
-                            localMinId = x;
-                        }
-                    }
-
-                    if (curOnes > (countOnes.get(localMinId) + wristThresh)){break;}
-                    countOnes.add(curOnes);
-                }
-
-                Rect newBoxRect = new Rect(new Point(localMinId, tl.y), br);
-                roi = new Mat(imgIn, newBoxRect);
-
-                Point newtl = newBoxRect.tl();
-                Point newbr = newBoxRect.br();
-
-                int y1 = (int)newBoxRect.tl().y;
-                while (Core.countNonZero(roi.row(y1)) < 2) {
-                    y1++;
-                }
-                int y2 = (int)newBoxRect.br().y;
-                while (Core.countNonZero(roi.row(y2)) < 2) {
-                    y2--;
-                }
-                finalRect = new Rect(new Point(newtl.x, y1), new Point(newbr.x, y2));
-            } else if (br.y > rowNum - armMargin) {
-
-                double rowLimit = br.y;
-
-                int scanCount = 0;
-                int scanLength = 8;
-                int scanDelta = 8;
-                int y;
-                for (y = (int)br.y - 1; y > tl.y; y--) {
-                    int curOnes = Core.countNonZero((roi.row(y - (int)tl.y)));
-                    int lstTail = countOnes.size()-1;
-                    if (lstTail >= 0) {
-                        countOnes.add(curOnes);
-
-                        if (scanCount % scanLength == 0) {
-                            int curDelta = curOnes - countOnes.get(scanCount-5);
-                            if (curDelta > scanDelta) {break;}
-                        }
-                    } else {countOnes.add(curOnes);}
-
-                    scanCount++;
-                }
-                finalRect = new Rect(tl, new Point(br.x, y+scanLength));
-            }
-            if (finalRect!=null) {
-                roi = new Mat(imgIn, finalRect);
-                roi.copyTo(tmpMat);
-                imgIn.copyTo(imgOut);
-                imgOut.setTo(Scalar.all(0));
-                roi = new Mat(imgOut, finalRect);
-                tmpMat.copyTo(roi);
-            }
-        }
-    }*/
 
     void adjustBoundingBox(Rect initRect, Mat img) {
 
@@ -1429,6 +728,7 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
 
     //Generates binary image containing user's hand
     void produceBinImg(Mat imgIn, Mat imgOut) {
+
         int colNum = imgIn.cols();
         int rowNum = imgIn.rows();
         int boxExtension = 0;
@@ -1446,7 +746,7 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
         Rect roiRect = makeBoundingBox(tmpMat);
         adjustBoundingBox(roiRect, binTmpMat);
 
-        if (roiRect!=null) {
+        if ( roiRect != null ) {
             roiRect.x = Math.max(0, roiRect.x - boxExtension);
             roiRect.y = Math.max(0, roiRect.y - boxExtension);
             roiRect.width = Math.min(roiRect.width+boxExtension, colNum);
@@ -1462,11 +762,11 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
 
             Imgproc.erode(roi3, roi3, element, new Point(-1, -1), 2);
         }
-        //	cropBinImg(imgOut, imgOut);
+
     }
 
     //Generates binary image thresholded only by sampled hand colors
-    void produceBinHandImg(Mat imgIn, Mat imgOut){
+    private void produceBinHandImg(Mat imgIn, Mat imgOut){
         for (int i = 0; i < SAMPLE_NUM; i++) {
             lowerBound.set(new double[]{avgColor[i][0]-cLower[i][0], avgColor[i][1]-cLower[i][1],
                     avgColor[i][2]-cLower[i][2]});
@@ -1484,7 +784,7 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
     }
 
     //Generates binary image thresholded only by sampled background colors
-    void produceBinBackImg(Mat imgIn, Mat imgOut) {
+    private void produceBinBackImg(Mat imgIn, Mat imgOut) {
         for (int i = 0; i < SAMPLE_NUM; i++) {
 
             lowerBound.set(new double[]{avgBackColor[i][0]-cBackLower[i][0], avgBackColor[i][1]-cBackLower[i][1],
@@ -1506,15 +806,7 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
         Imgproc.medianBlur(imgOut, imgOut, 7);
     }
 
-    /*void dilate(Mat img) {
-        int cols = img.cols();
-        int rows = img.rows();
-        Mat element = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(3, 3));
-        Mat roi = new Mat(img, new Rect(cols/4, rows/6, cols/2, rows*2/3));
-        Imgproc.dilate(roi, roi, element);
-    }*/
-
-    void makeContours() {
+   private void makeContours() {
 
         try {
             hg.contours.clear();
@@ -1623,11 +915,12 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
                 Imgproc.drawContours(rgbaMat, hg.hullP, hg.cMaxId, mColorsRGB[2]);
             }
         } catch (Exception e) {
+            Log.e(TAG ,e.toString());
         }
 
     }
 
-    boolean isClosedToBoundary(Point pt, Mat img) {
+    private boolean isClosedToBoundary(Point pt, Mat img) {
         int margin = 5;
         if ((pt.x > margin) && (pt.y > margin) &&
                 (pt.x < img.cols()-margin) &&
@@ -1637,7 +930,8 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
         return true;
     }
 
-    Rect makeBoundingBox(Mat img) {
+    @Nullable
+    private Rect makeBoundingBox(Mat img) {
         hg.contours.clear();
         Imgproc.findContours(img, hg.contours, hg.hie, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_NONE);
         hg.findBiggestContour();
@@ -1676,43 +970,7 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
         if (mOpenCvCameraView != null) {
             mOpenCvCameraView.disableView();
         }
-        SharedPreferences numbers = getSharedPreferences("Numbers", 0);
-        SharedPreferences.Editor editor = numbers.edit();
-        editor.putInt("imgNum", imgNum);
-        editor.commit();
-        try{
-            FileOutputStream fos = new FileOutputStream(sdFile);
-            Log.e("Fos","write succeeded......");
-            ObjectOutputStream oos = new ObjectOutputStream(fos);
-            Log.e("oos","write succeeded......");
-            for (Map.Entry<Integer, Intent> entry : table.entrySet()) {
-                oos.writeInt(entry.getKey());
-                String tmp =entry.getValue().toURI();
-                Log.e("111111",tmp);
-                oos.writeObject(tmp);
-            }
-            Log.e("Ob","write succeeded......");
-            oos.close();
-            Log.e("Write","write succeeded......");
-        }catch(Exception ex)
-        {
-            Log.e("Write","write failed......");
-        }
     }
-
-    /*public static boolean deleteDir(File dir) {
-        if (dir != null && dir.isDirectory()) {
-            String[] children = dir.list();
-            for (int i = 0; i < children.length; i++) {
-                boolean success = deleteDir(new File(dir, children[i]));
-                if (!success) {
-                    return false;
-                }
-            }
-        }
-        // The directory is now empty so delete it
-        return dir.delete();
-    }*/
 
     @Override
     public void onBackPressed() {
