@@ -1,6 +1,7 @@
 package app.ssru.mrsmile.signlanguage;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.lang.Math;
@@ -17,14 +18,14 @@ import org.opencv.core.Mat;
 import org.opencv.core.Scalar;
 import org.opencv.core.Size;
 import org.opencv.core.Rect;
-import org.opencv.imgproc.Imgproc;
 
+import org.opencv.imgproc.Imgproc;
 import android.os.Bundle;
 import android.os.Handler;
 import android.app.Activity;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.hardware.Camera;
-import android.support.annotation.Nullable;
 import android.support.v4.view.MotionEventCompat;
 import android.util.Log;
 import android.view.Menu;
@@ -37,10 +38,10 @@ import android.view.View.OnTouchListener;
 import android.widget.Toast;
 
 
-public class TheTranslation extends Activity implements CvCameraViewListener2{
+public class TheTranslation extends Activity implements CvCameraViewListener2 {
 
     //Just for debugging
-    private static final String TAG = "Translation :::: ";
+    private static final String TAG = "HandGestureApp";
 
     //Color Space used for hand segmentation
     private static final int COLOR_SPACE = Imgproc.COLOR_RGB2Lab;
@@ -72,6 +73,12 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
     //Mode that is started when user clicks 'App Test' in the menu.
     public static final int APP_TEST_MODE = 6;
 
+    //Mode that is started when user clicks 'Data Collection' in the menu.
+    public static final int DATA_COLLECTION_MODE = 0;
+
+    //Mode that is started when user clicks 'Map Apps' in the menu.
+    public static final int MAP_APPS_MODE = 1;
+
     //Number of frames used for prediction
     private static final int FRAME_BUFFER_NUM = 1;
 
@@ -80,10 +87,14 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
 
     private int appTestFrameCount = 0;
 
+    private int testFrameCount = 0;
     private float[][] values = new float[FRAME_BUFFER_NUM][];
     private int[][] indices = new int[FRAME_BUFFER_NUM][];
 
     private Handler mHandler = new Handler();
+
+    //Stores the mapping results from gesture labels to app intents
+    private HashMap<Integer, Intent> table = new HashMap<>();
 
 
     private MyCameraView mOpenCvCameraView;
@@ -96,6 +107,8 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
     //Initial mode is BACKGROUND_MODE to presample the colors of the hand
     private int mode = BACKGROUND_MODE;
 
+    private int chooserMode = DATA_COLLECTION_MODE;
+
     private static final int SAMPLE_NUM = 7;
 
 
@@ -103,6 +116,7 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
     private double[][] avgColor = null;
     private double[][] avgBackColor = null;
 
+    private double[] channelsPixel = new double[4];
     private ArrayList<ArrayList<Double>> averChans = new ArrayList<>();
 
     private double[][] cLower = new double[SAMPLE_NUM][3];
@@ -144,12 +158,12 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
     //Stores all the information about the hand
     private HandGesture hg = null;
 
+    private int imgNum;
     private int gesFrameCount;
     private int curLabel = 0;
 
     //Stores string representation of features to be written to train_data.txt
     private ArrayList<String> feaStrs = new ArrayList<>();
-
 
     private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
         @Override
@@ -178,6 +192,7 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
                                     } else if (mode == DETECTION_MODE) {
                                         mode = TRAIN_REC_MODE;
                                         toastStr = "Binary Display Finished!";
+
                                     } else if (mode == TRAIN_REC_MODE){
                                         mode = DETECTION_MODE;
                                         toastStr = "train finished!";
@@ -236,9 +251,13 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
         for (int i = 0; i < 3; i++)
             averChans.add(new ArrayList<Double>());
 
+
         //Lab
         initCLowerUpper(50, 50, 10, 10, 10, 10);
         initCBackLowerUpper(50, 50, 3, 3, 3, 3);
+
+        SharedPreferences numbers = getSharedPreferences("Numbers", 0);
+        imgNum = numbers.getInt("imgNum", 0);
 
         Log.i(TAG, "Created!");
     }
@@ -250,11 +269,6 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
 
         switch (item.getItemId()) {
             case R.id.action_save:
-                //isPictureSaved = true;
-                return true;
-            case R.id.data_collection:
-                return true;
-            case R.id.map_apps:
                 return true;
             case R.id.app_test:
                 if (mode == APP_TEST_MODE) {
@@ -266,6 +280,8 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
                     appTestFrameCount = 0;
                 }
                 return true;
+            //  default:
+            //    return super.onOptionsItemSelected(item);
         }
 
         int groupId = item.getGroupId();
@@ -279,34 +295,28 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
             Toast.makeText(this, caption, Toast.LENGTH_SHORT).show();
             return true;
         }
-
         return super.onOptionsItemSelected(item);
-
     }
 
     //Just initialize boundaries of the first sample
-    private void initCLowerUpper( double cl1, double cu1, double cl2,
-                                  double cu2, double cl3, double cu3 ) {
-
+    private void initCLowerUpper(double cl1, double cu1, double cl2, double cu2, double cl3,
+                         double cu3){
         cLower[0][0] = cl1;
         cUpper[0][0] = cu1;
         cLower[0][1] = cl2;
         cUpper[0][1] = cu2;
         cLower[0][2] = cl3;
         cUpper[0][2] = cu3;
-
     }
 
-    private void initCBackLowerUpper( double cl1, double cu1, double cl2,
-                                      double cu2, double cl3, double cu3 ) {
-
+    private void initCBackLowerUpper(double cl1, double cu1, double cl2, double cu2, double cl3,
+                             double cu3){
         cBackLower[0][0] = cl1;
         cBackUpper[0][0] = cu1;
         cBackLower[0][1] = cl2;
         cBackUpper[0][1] = cu2;
         cBackLower[0][2] = cl3;
         cBackUpper[0][2] = cu3;
-
     }
 
     //Initialize menu and resolution list.
@@ -331,40 +341,30 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
         return true;
     }
 
-    private void checkCameraParameters() {
+    public void checkCameraParameters() {
         if (mOpenCvCameraView.isAutoWhiteBalanceLockSupported()) {
-
             if (mOpenCvCameraView.getAutoWhiteBalanceLock()) {
-
                 Log.d("AutoWhiteBalanceLock", "Locked");
-
             } else {
-
                 Log.d("AutoWhiteBalanceLock", "Not Locked");
                 mOpenCvCameraView.setAutoWhiteBalanceLock(true);
 
                 if (mOpenCvCameraView.getAutoWhiteBalanceLock()) {
                     Log.d("AutoWhiteBalanceLock", "Locked");
                 }
-
             }
-
-        } else {
-            Log.d("AutoWhiteBalanceLock", "Not Supported");
-        }
+        } else {Log.d("AutoWhiteBalanceLock", "Not Supported");}
     }
 
-    private void releaseCVMats() {
-
-        releaseCVMat( sampleColorMat );
+    public void releaseCVMats() {
+        releaseCVMat(sampleColorMat);
         sampleColorMat = null;
 
-        if ( sampleColorMats != null ) {
+        if (sampleColorMats!=null) {
             for (int i = 0; i < sampleColorMats.size(); i++) {
                 releaseCVMat(sampleColorMats.get(i));
             }
         }
-
         sampleColorMats = null;
 
         if (sampleMats != null) {
@@ -372,7 +372,6 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
                 releaseCVMat(sampleMats[i]);
             }
         }
-
         sampleMats = null;
 
         releaseCVMat(rgbMat);
@@ -409,100 +408,48 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
         binDifMat = null;
     }
 
-    private void releaseCVMat( Mat img ) {
-        if (img != null) {
-            img.release();
-        }
+    public void releaseCVMat(Mat img) {
+        if (img != null) {img.release();}
     }
 
     @Override
     public void onCameraViewStarted(int width, int height) {
         // TODO Auto-generated method stub
-        Log.i(TAG, "On camera view started!");
+        Log.i(TAG, "On cameraview started!");
 
-        if (isNullValue(sampleColorMat)) {
-            sampleColorMat = new Mat();
-        }
+        if (sampleColorMat == null) {sampleColorMat = new Mat();}
+        if (sampleColorMats == null) {sampleColorMats = new ArrayList<Mat>();}
 
-        if (isNullValue(sampleColorMats)) {
-            sampleColorMats = new ArrayList<>();
-        }
-
-        if (isNullValue(sampleMats)) {
+        if (sampleMats == null) {
             sampleMats = new Mat[SAMPLE_NUM];
             for (int i = 0; i < SAMPLE_NUM; i++) {
                 sampleMats[i] = new Mat();
             }
         }
 
-        if (isNullValue(rgbMat)) {
-            rgbMat = new Mat();
-        }
+        if (rgbMat == null) {rgbMat = new Mat();}
+        if (bgrMat == null) {bgrMat = new Mat();}
+        if (interMat == null) {interMat = new Mat();}
+        if (binMat == null) {binMat = new Mat();}
+        if (binTmpMat == null){binTmpMat = new Mat();}
+        if (binTmpMat2 == null) {binTmpMat2 = new Mat();}
+        if (binTmpMat0 == null) {binTmpMat0 = new Mat();}
+        if (binTmpMat3 == null) {binTmpMat3 = new Mat();}
+        if (tmpMat == null) {tmpMat = new Mat();}
+        if (backMat==null) {backMat = new Mat();}
+        if (difMat == null) {difMat = new Mat();}
+        if (binDifMat == null) {binDifMat = new Mat();}
+        if (hg == null) {hg = new HandGesture();}
 
-        if (isNullValue(bgrMat)) {
-            bgrMat = new Mat();
-        }
+        mColorsRGB = new Scalar[] { new Scalar(255, 0, 0, 255), new Scalar(0, 255, 0, 255), new Scalar(0, 0, 255, 255) };
 
-        if (isNullValue(interMat)) {
-            interMat = new Mat();
-        }
-
-        if (isNullValue(binMat)) {
-            binMat = new Mat();
-        }
-
-        if (isNullValue(binTmpMat)) {
-            binTmpMat = new Mat();
-        }
-
-        if (isNullValue(binTmpMat2)) {
-            binTmpMat2 = new Mat();
-        }
-
-        if (isNullValue(binTmpMat0)) {
-            binTmpMat0 = new Mat();
-        }
-
-        if (isNullValue(binTmpMat3)) {
-            binTmpMat3 = new Mat();
-        }
-
-        if (isNullValue(tmpMat)) {
-            tmpMat = new Mat();
-        }
-
-        if (isNullValue(backMat)) {
-            backMat = new Mat();
-        }
-
-        if (isNullValue(difMat)) {
-            difMat = new Mat();
-        }
-
-        if (isNullValue(binDifMat)) {
-            binDifMat = new Mat();
-        }
-
-        if (isNullValue(hg)) {
-            hg = new HandGesture();
-        }
-
-        mColorsRGB = new Scalar[] {
-                        new Scalar(255, 0, 0, 255),
-                            new Scalar(0, 255, 0, 255),
-                                new Scalar(0, 0, 255, 255)
-        };
-
-    }
-
-    private boolean isNullValue(Object object) {
-        return object == null;
     }
 
     @Override
     public void onCameraViewStopped() {
-        Log.i(TAG, "On camera view stopped!");
-        releaseCVMats();
+        // TODO Auto-generated method stub
+        Log.i(TAG, "On cameraview stopped!");
+        //	releaseCVMats();
     }
 
     //Called when each frame data gets received
@@ -525,13 +472,9 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
             //segmented hand represented by white color
             produceBinImg(interMat, binMat);
             return binMat;
-        } else if ((mode == TRAIN_REC_MODE)
-                    ||(mode == ADD_MODE)
-                        || (mode == TEST_MODE)
-                            || (mode == APP_TEST_MODE)){
-
+        } else if ((mode == TRAIN_REC_MODE)||(mode == ADD_MODE)
+                || (mode == TEST_MODE) || (mode == APP_TEST_MODE)){
             produceBinImg(interMat, binMat);
-
             try {
                 makeContours();
             } catch (Exception e) {
@@ -581,6 +524,8 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
                     indices[0][i] = i+1;
                 }
 
+                int isProb = 0;
+
                 int[] returnedLabel = {0};
                 double[] returnedProb = {0.0};
 
@@ -600,10 +545,8 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
                             if (appTestFrameCount == APP_TEST_DELAY_NUM) {
                                 //Call other apps according to the predicted label
                                 //This is done every APP_TEST_DELAY_NUM frames
-                                //callAppByLabel(returnedLabel[0]);
-                            } else {
-                                appTestFrameCount++;
-                            }
+                                callAppByLabel(returnedLabel[0]);
+                            } else {appTestFrameCount++;}
                         }
                     }
                 }
@@ -612,6 +555,15 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
             preSampleBack(rgbaMat);
         }
         return rgbaMat;
+    }
+
+    private void callAppByLabel(int label) {
+        Intent intent = table.get(label);
+
+        if (intent != null) {
+            appTestFrameCount = 0;
+            startActivity(intent);
+        }
     }
 
     //Presampling hand colors.
@@ -686,13 +638,13 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
                 avgBackColor[i][j] = (interMat.get((int)(samplePoints[i][0].y+squareLen/2), (int)(samplePoints[i][0].x+squareLen/2)))[j];
             }
         }
-
     }
 
     private void boundariesCorrection() {
-
-        for (int i = 1; i < SAMPLE_NUM; i++) {
-            for (int j = 0; j < 3; j++) {
+        for (int i = 1; i < SAMPLE_NUM; i++)
+        {
+            for (int j = 0; j < 3; j++)
+            {
                 cLower[i][j] = cLower[0][j];
                 cUpper[i][j] = cUpper[0][j];
 
@@ -701,23 +653,21 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
             }
         }
 
-        for (int i = 0; i < SAMPLE_NUM; i++) {
-            for (int j = 0; j < 3; j++) {
-
-                if (avgColor[i][j] - cLower[i][j] < 0) {
+        for (int i = 0; i < SAMPLE_NUM; i++)
+        {
+            for (int j = 0; j < 3; j++)
+            {
+                if (avgColor[i][j] - cLower[i][j] < 0)
                     cLower[i][j] = avgColor[i][j];
-                }
 
-                if (avgColor[i][j] + cUpper[i][j] > 255) {
+                if (avgColor[i][j] + cUpper[i][j] > 255)
                     cUpper[i][j] = 255 - avgColor[i][j];
-                }
-                if (avgBackColor[i][j] - cBackLower[i][j] < 0){
-                    cBackLower[i][j] = avgBackColor[i][j];
-                }
 
-                if (avgBackColor[i][j] + cBackUpper[i][j] > 255){
+                if (avgBackColor[i][j] - cBackLower[i][j] < 0)
+                    cBackLower[i][j] = avgBackColor[i][j];
+
+                if (avgBackColor[i][j] + cBackUpper[i][j] > 255)
                     cBackUpper[i][j] = 255 - avgBackColor[i][j];
-                }
             }
         }
     }
@@ -727,8 +677,7 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
     }
 
     //Generates binary image containing user's hand
-    void produceBinImg(Mat imgIn, Mat imgOut) {
-
+    private void produceBinImg(Mat imgIn, Mat imgOut) {
         int colNum = imgIn.cols();
         int rowNum = imgIn.rows();
         int boxExtension = 0;
@@ -746,7 +695,7 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
         Rect roiRect = makeBoundingBox(tmpMat);
         adjustBoundingBox(roiRect, binTmpMat);
 
-        if ( roiRect != null ) {
+        if (roiRect!=null) {
             roiRect.x = Math.max(0, roiRect.x - boxExtension);
             roiRect.y = Math.max(0, roiRect.y - boxExtension);
             roiRect.width = Math.min(roiRect.width+boxExtension, colNum);
@@ -762,7 +711,7 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
 
             Imgproc.erode(roi3, roi3, element, new Point(-1, -1), 2);
         }
-
+        //	cropBinImg(imgOut, imgOut);
     }
 
     //Generates binary image thresholded only by sampled hand colors
@@ -806,7 +755,7 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
         Imgproc.medianBlur(imgOut, imgOut, 7);
     }
 
-   private void makeContours() {
+    private void makeContours() {
 
         try {
             hg.contours.clear();
@@ -915,7 +864,6 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
                 Imgproc.drawContours(rgbaMat, hg.hullP, hg.cMaxId, mColorsRGB[2]);
             }
         } catch (Exception e) {
-            Log.e(TAG ,e.toString());
         }
 
     }
@@ -930,7 +878,6 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
         return true;
     }
 
-    @Nullable
     private Rect makeBoundingBox(Mat img) {
         hg.contours.clear();
         Imgproc.findContours(img, hg.contours, hg.hie, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_NONE);
@@ -970,6 +917,10 @@ public class TheTranslation extends Activity implements CvCameraViewListener2{
         if (mOpenCvCameraView != null) {
             mOpenCvCameraView.disableView();
         }
+        SharedPreferences numbers = getSharedPreferences("Numbers", 0);
+        SharedPreferences.Editor editor = numbers.edit();
+        editor.putInt("imgNum", imgNum);
+        editor.commit();
     }
 
     @Override

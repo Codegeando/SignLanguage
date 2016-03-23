@@ -1,10 +1,7 @@
 package app.ssru.mrsmile.signlanguage;
 
-
 import java.util.List;
-
 import org.opencv.android.JavaCameraView;
-
 import android.content.Context;
 import android.hardware.Camera;
 import android.hardware.Camera.Size;

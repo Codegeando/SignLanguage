@@ -57,7 +57,7 @@ public class HandGesture {
 				cNum = curNum;
 			}
 		}
-		
+
 		cMaxId = idx;
 	}
 	

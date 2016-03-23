@@ -88,7 +88,6 @@ public class TrainSignLanguage extends ActionBarActivity implements CvCameraView
                 case LoaderCallbackInterface.SUCCESS:
                     Log.d(TAG, "OpenCV loaded successfully");
                     mCameraView.enableView();
-                    //mCameraView.enableFpsMeter();
                     mBgr = new Mat();
                     break;
                 default:
@@ -288,7 +287,7 @@ public class TrainSignLanguage extends ActionBarActivity implements CvCameraView
         return rgba;
     }
 
-    private void takePhoto(final Mat rgba) {
+    public void takePhoto(final Mat rgba) {
 
         // Determine the path and metadata for the photo.
         final long currentTimeMillis = System.currentTimeMillis();
